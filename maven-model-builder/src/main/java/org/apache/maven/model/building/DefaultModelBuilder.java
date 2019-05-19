@@ -20,7 +20,6 @@ package org.apache.maven.model.building;
  */
 
 
-import org.apache.commons.lang3.Validate;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
@@ -74,6 +73,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 
 import static org.apache.maven.model.building.Result.error;
@@ -387,6 +387,14 @@ public class DefaultModelBuilder
         // model interpolation
         resultModel = interpolateModel( resultModel, request, problems );
         resultData.setModel( resultModel );
+
+        if ( resultModel.getParent() != null )
+        {
+            final ModelData parentData = lineage.get( 1 );
+            final Model interpolatedParent = interpolateModel( parentData.getModel(), request, problems );
+            // parentData.setModel( interpolatedParent );
+            parentData.setVersion( interpolatedParent.getVersion() );
+        }
 
         // url normalization
         modelUrlNormalizer.normalize( resultModel, request );
@@ -844,10 +852,11 @@ public class DefaultModelBuilder
                 File pomFile = parentData.getModel().getPomFile();
                 if ( pomFile != null )
                 {
+                    FileModelSource pomSource = new FileModelSource( pomFile );
                     ModelSource expectedParentSource = getParentPomFile( childModel, childSource );
 
                     if ( expectedParentSource == null || ( expectedParentSource instanceof ModelSource2
-                        && !pomFile.toURI().equals( ( (ModelSource2) expectedParentSource ).getLocationURI() ) ) )
+                        && !pomSource.equals(  expectedParentSource ) ) )
                     {
                         parentData = readParentExternally( childModel, request, problems );
                     }
@@ -1042,9 +1051,10 @@ public class DefaultModelBuilder
         String version = parent.getVersion();
 
         ModelResolver modelResolver = request.getModelResolver();
-
-        Validate.notNull( modelResolver, "request.modelResolver cannot be null (parent POM %s and POM %s)",
-            ModelProblemUtils.toId( groupId, artifactId, version ), ModelProblemUtils.toSourceHint( childModel ) );
+        Objects.requireNonNull( modelResolver,
+                                String.format( "request.modelResolver cannot be null (parent POM %s and POM %s)",
+                                               ModelProblemUtils.toId( groupId, artifactId, version ),
+                                               ModelProblemUtils.toSourceHint( childModel ) ) );
 
         ModelSource modelSource;
         try

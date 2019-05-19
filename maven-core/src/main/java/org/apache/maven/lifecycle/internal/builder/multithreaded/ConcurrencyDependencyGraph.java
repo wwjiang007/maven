@@ -26,6 +26,7 @@ import org.apache.maven.project.MavenProject;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -45,7 +46,7 @@ public class ConcurrencyDependencyGraph
 
     private final ProjectDependencyGraph projectDependencyGraph;
 
-    private final HashSet<MavenProject> finishedProjects = new HashSet<>();
+    private final Set<MavenProject> finishedProjects = new HashSet<>();
 
     public ConcurrencyDependencyGraph( ProjectBuildList projectBuilds, ProjectDependencyGraph projectDependencyGraph )
     {
@@ -61,20 +62,20 @@ public class ConcurrencyDependencyGraph
     /**
      * Gets all the builds that have no reactor-dependencies
      *
-     * @return A list of all the initial builds
+     * @return A set of all the initial builds
      */
 
     public List<MavenProject> getRootSchedulableBuilds()
     {
-        List<MavenProject> result = new ArrayList<>();
+        Set<MavenProject> result = new LinkedHashSet<>();
         for ( ProjectSegment projectBuild : projectBuilds )
         {
-            if ( projectDependencyGraph.getUpstreamProjects( projectBuild.getProject(), false ).size() == 0 )
+            if ( projectDependencyGraph.getUpstreamProjects( projectBuild.getProject(), false ).isEmpty() )
             {
                 result.add( projectBuild.getProject() );
             }
         }
-        return result;
+        return new ArrayList<>( result );
     }
 
     /**
@@ -111,7 +112,7 @@ public class ConcurrencyDependencyGraph
     public Set<MavenProject> getUnfinishedProjects()
     {
         Set<MavenProject> unfinished = new HashSet<>( projectBuilds.getProjects() );
-        unfinished.remove( finishedProjects );
+        unfinished.removeAll( finishedProjects );
         return unfinished;
     }
 

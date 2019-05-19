@@ -73,10 +73,6 @@ public class DefaultModelValidator
                        AbstractStringBasedModelInterpolator.CHANGELIST_PROPERTY,
                        AbstractStringBasedModelInterpolator.SHA1_PROPERTY );
 
-    private static final Pattern ID_REGEX = Pattern.compile( "[A-Za-z0-9_\\-.]+" );
-
-    private static final Pattern ID_WITH_WILDCARDS_REGEX = Pattern.compile( "[A-Za-z0-9_\\-.?*]+" );
-
     private static final String ILLEGAL_FS_CHARS = "\\/:\"<>|?*";
 
     private static final String ILLEGAL_VERSION_CHARS = ILLEGAL_FS_CHARS;
@@ -105,13 +101,13 @@ public class DefaultModelValidator
                                   + ", the parent element cannot have the same groupId:artifactId as the project.",
                               parent );
             }
-            
+
             if ( equals( "LATEST", parent.getVersion() ) || equals( "RELEASE", parent.getVersion() ) )
             {
                 addViolation( problems, Severity.WARNING, Version.BASE, "parent.version", null,
                               "is either LATEST or RELEASE (both of them are being deprecated)", parent );
             }
-            
+
         }
 
         if ( request.getValidationLevel() >= ModelBuildingRequest.VALIDATION_LEVEL_MAVEN_2_0 )
@@ -546,21 +542,21 @@ public class DefaultModelValidator
                                                            List<Dependency> dependencies, String prefix,
                                                            ModelBuildingRequest request )
     {
-        // We only check for groupId/artifactId cause if there is another
-        // module with the same groupId/artifactId this will fail the build
+        // We only check for groupId/artifactId/version/classifier cause if there is another
+        // module with the same groupId/artifactId/version/classifier this will fail the build
         // earlier like "Project '...' is duplicated in the reactor.
-        // So it is sufficient to check only groupId/artifactId and not the
+        // So it is sufficient to check only groupId/artifactId/version/classifier and not the
         // packaging type.
         for ( Dependency dependency : dependencies )
         {
-            String key = dependency.getGroupId() + ":" + dependency.getArtifactId() + ":" + dependency.getVersion();
+            String key = dependency.getGroupId() + ":" + dependency.getArtifactId() + ":" + dependency.getVersion()
+                    + ( dependency.getClassifier() != null ? ":" + dependency.getClassifier() : ""  );
             String mKey = m.getGroupId() + ":" + m.getArtifactId() + ":" + m.getVersion();
             if ( key.equals( mKey ) )
             {
                 // This means a module which is build has a dependency which has the same
-                // groupId, artifactId and version coordinates. This is in consequence
-                // a self reference or in other words a circular reference which can not
-                // being resolved.
+                // groupId, artifactId, version and classifier coordinates. This is in consequence
+                // a self reference or in other words a circular reference which can not being resolved.
                 addViolation( problems, Severity.FATAL, Version.V31, prefix + " " + key, key, "is referencing itself.",
                               dependency );
 
@@ -598,6 +594,12 @@ public class DefaultModelValidator
 
                     validateEffectiveModelAgainstDependency( prefix, problems, m, d, request );
                 }
+                else
+                {
+                    validateEnum( prefix + "scope", problems, Severity.WARNING, Version.V20, d.getScope(),
+                                  d.getManagementKey(), d, "provided", "compile", "runtime", "test", "system",
+                                  "import" );
+                }
             }
         }
     }
@@ -605,14 +607,14 @@ public class DefaultModelValidator
     private void validateEffectiveModelAgainstDependency( String prefix, ModelProblemCollector problems, Model m,
                                                           Dependency d, ModelBuildingRequest request )
     {
-        String key = d.getGroupId() + ":" + d.getArtifactId() + ":" + d.getVersion();
+        String key = d.getGroupId() + ":" + d.getArtifactId() + ":" + d.getVersion()
+                + ( d.getClassifier() != null ? ":" + d.getClassifier() : ""  );
         String mKey = m.getGroupId() + ":" + m.getArtifactId() + ":" + m.getVersion();
         if ( key.equals( mKey ) )
         {
             // This means a module which is build has a dependency which has the same
-            // groupId, artifactId and version coordinates. This is in consequence
-            // a self reference or in other words a circular reference which can not
-            // being resolved.
+            // groupId, artifactId, version and classifier coordinates. This is in consequence
+            // a self reference or in other words a circular reference which can not being resolved.
             addViolation( problems, Severity.FATAL, Version.V31, prefix + " " + key, key, "is referencing itself.", d );
 
         }
@@ -823,14 +825,33 @@ public class DefaultModelValidator
         }
         else
         {
-            boolean match = ID_REGEX.matcher( id ).matches();
-            if ( !match )
+            if ( !isValidId( id ) )
             {
                 addViolation( problems, severity, version, fieldName, sourceHint,
                               "with value '" + id + "' does not match a valid id pattern.", tracker );
+                return false;
             }
-            return match;
+            return true;
         }
+    }
+
+    private boolean isValidId( String id )
+    {
+        for ( int i = 0; i < id.length(); i++ )
+        {
+            char c = id.charAt( i );
+            if ( !isValidIdCharacter( c ) )
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    private boolean isValidIdCharacter( char c )
+    {
+        return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_' || c == '.';
     }
 
     private boolean validateIdWithWildcards( String fieldName, ModelProblemCollector problems, Severity severity,
@@ -843,14 +864,32 @@ public class DefaultModelValidator
         }
         else
         {
-            boolean match = ID_WITH_WILDCARDS_REGEX.matcher( id ).matches();
-            if ( !match )
+            if ( !isValidIdWithWildCards( id ) )
             {
                 addViolation( problems, severity, version, fieldName, sourceHint,
                               "with value '" + id + "' does not match a valid id pattern.", tracker );
+                return false;
             }
-            return match;
+            return true;
         }
+    }
+
+    private boolean isValidIdWithWildCards( String id )
+    {
+        for ( int i = 0; i < id.length(); i++ )
+        {
+            char c = id.charAt( i );
+            if ( !isValidIdWithWildCardCharacter( c ) )
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isValidIdWithWildCardCharacter( char c )
+    {
+        return isValidIdCharacter( c ) || c == '?' || c == '*';
     }
 
     private boolean validateStringNoExpression( String fieldName, ModelProblemCollector problems, Severity severity,

@@ -339,6 +339,16 @@ public class DefaultModelValidatorTest
         assertTrue( result.getWarnings().get( 1 ).contains( "test:g" ) );
     }
 
+    public void testBadDependencyManagementScope()
+        throws Exception
+    {
+        SimpleProblemCollector result = validate( "bad-dependency-management-scope.xml" );
+
+        assertViolations( result, 0, 0, 1 );
+
+        assertContains( result.getWarnings().get( 0 ), "test:g" );
+    }
+
     public void testBadDependencyVersion()
         throws Exception
     {
@@ -727,6 +737,13 @@ public class DefaultModelValidatorTest
         assertEquals( "'dependencies.dependency com.example.group:testinvalidpom:0.0.1-SNAPSHOT' for com.example.group:testinvalidpom:0.0.1-SNAPSHOT is referencing itself.",
                       result.getFatals().get( 0 ) );
 
+    }
+
+    public void testSelfReferencingDependencyWithClassifierInRawModel() throws Exception
+    {
+        SimpleProblemCollector result = validateRaw( "raw-model/self-referencing-classifier.xml" );
+
+        assertViolations( result, 0, 0, 0 );
     }
 
     public void testCiFriendlySha1()

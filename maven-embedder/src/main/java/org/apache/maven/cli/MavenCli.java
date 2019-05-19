@@ -124,8 +124,6 @@ public class MavenCli
 {
     public static final String LOCAL_REPO_PROPERTY = "maven.repo.local";
 
-    public static final String THREADS_DEPRECATED = "maven.threads.experimental";
-
     public static final String MULTIMODULE_PROJECT_DIRECTORY = "maven.multiModuleProjectDirectory";
 
     public static final String USER_HOME = System.getProperty( "user.home" );
@@ -386,7 +384,7 @@ public class MavenCli
                     }
                 }
 
-                mavenConfig = cliManager.parse( args.toArray( new String[args.size()] ) );
+                mavenConfig = cliManager.parse( args.toArray( new String[0] ) );
                 List<?> unrecongized = mavenConfig.getArgList();
                 if ( !unrecongized.isEmpty() )
                 {
@@ -598,7 +596,7 @@ public class MavenCli
         populateProperties( cliRequest.commandLine, cliRequest.systemProperties, cliRequest.userProperties );
     }
 
-    private PlexusContainer container( CliRequest cliRequest )
+    PlexusContainer container( CliRequest cliRequest )
         throws Exception
     {
         if ( cliRequest.classWorld == null )
@@ -752,7 +750,9 @@ public class MavenCli
 
                 BootstrapCoreExtensionManager resolver = container.lookup( BootstrapCoreExtensionManager.class );
 
-                return resolver.loadCoreExtensions( request, providedArtifacts, extensions );
+                return Collections.unmodifiableList( resolver.loadCoreExtensions( request, providedArtifacts,
+                                                                                  extensions ) );
+
             }
             finally
             {
@@ -1008,8 +1008,8 @@ public class MavenCli
             {
                 slf4jLogger.error( "" );
                 slf4jLogger.error( "After correcting the problems, you can resume the build with the command" );
-                slf4jLogger.error( buffer().a( "  " ).strong( "mvn <goals> -rf :"
-                                + project.getArtifactId() ).toString() );
+                slf4jLogger.error( buffer().a( "  " ).strong( "mvn <goals> -rf "
+                    + getResumeFrom( result.getTopologicallySortedProjects(), project ) ).toString() );
             }
 
             if ( MavenExecutionRequest.REACTOR_FAIL_NEVER.equals( cliRequest.request.getReactorFailureBehavior() ) )
@@ -1027,6 +1027,35 @@ public class MavenCli
         {
             return 0;
         }
+    }
+
+    /**
+     * A helper method to determine the value to resume the build with {@code -rf} taking into account the
+     * edge case where multiple modules in the reactor have the same artifactId.
+     * <p>
+     * {@code -rf :artifactId} will pick up the first module which matches, but when multiple modules in the
+     * reactor have the same artifactId, effective failed module might be later in build reactor.
+     * This means that developer will either have to type groupId or wait for build execution of all modules
+     * which were fine, but they are still before one which reported errors.
+     * <p>Then the returned value is {@code groupId:artifactId} when there is a name clash and
+     * {@code :artifactId} if there is no conflict.
+     *
+     * @param mavenProjects Maven projects which are part of build execution.
+     * @param failedProject Project which has failed.
+     * @return Value for -rf flag to resume build exactly from place where it failed ({@code :artifactId} in
+     *    general and {@code groupId:artifactId} when there is a name clash).
+     */
+    private String getResumeFrom( List<MavenProject> mavenProjects, MavenProject failedProject )
+    {
+        for ( MavenProject buildProject : mavenProjects )
+        {
+            if ( failedProject.getArtifactId().equals( buildProject.getArtifactId() ) && !failedProject.equals(
+                    buildProject ) )
+            {
+                return failedProject.getGroupId() + ":" + failedProject.getArtifactId();
+            }
+        }
+        return ":" + failedProject.getArtifactId();
     }
 
     private void logSummary( ExceptionSummary summary, Map<String, String> references, String indent,
@@ -1167,12 +1196,12 @@ public class MavenCli
                     sb.append( String.format( "%s\n", configurationProcessor.getClass().getName() ) );
                 }
             }
-            sb.append( String.format( "\n" ) );
+            sb.append( "\n" );
             throw new Exception( sb.toString() );
         }
     }
 
-    private void toolchains( CliRequest cliRequest )
+    void toolchains( CliRequest cliRequest )
         throws Exception
     {
         File userToolchainsFile;
@@ -1236,7 +1265,7 @@ public class MavenCli
 
         ToolchainsBuildingResult toolchainsResult = toolchainsBuilder.build( toolchainsRequest );
 
-        eventSpyDispatcher.onEvent( toolchainsRequest );
+        eventSpyDispatcher.onEvent( toolchainsResult );
 
         executionRequestPopulator.populateFromToolchains( cliRequest.request,
                                                           toolchainsResult.getEffectiveToolchains() );
@@ -1397,7 +1426,7 @@ public class MavenCli
 
         TransferListener transferListener;
 
-        if ( quiet )
+        if ( quiet || cliRequest.commandLine.hasOption( CLIManager.NO_TRANSFER_PROGRESS ) )
         {
             transferListener = new QuietMavenTransferListener();
         }
@@ -1548,8 +1577,7 @@ public class MavenCli
         //
         final String threadConfiguration = commandLine.hasOption( CLIManager.THREADS )
             ? commandLine.getOptionValue( CLIManager.THREADS )
-            : request.getSystemProperties().getProperty(
-                MavenCli.THREADS_DEPRECATED ); // TODO Remove this setting. Note that the int-tests use it
+            : null;
 
         if ( threadConfiguration != null )
         {

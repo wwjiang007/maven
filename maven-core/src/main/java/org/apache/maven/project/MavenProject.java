@@ -81,8 +81,8 @@ import org.eclipse.aether.repository.RemoteRepository;
  * </p>
  * <p>
  * With changes during 3.2.2 release MavenProject is closer to being immutable after construction with the removal of
- * all components from this class, and the upfront construction taken care of entirely by the @{ProjectBuilder}. There
- * is still the issue of having to run the lifecycle in order to find all the compile source roots and resource
+ * all components from this class, and the upfront construction taken care of entirely by the {@link ProjectBuilder}.
+ * There is still the issue of having to run the lifecycle in order to find all the compile source roots and resource
  * directories but I hope to take care of this during the Maven 4.0 release (jvz).
  * </p>
  */
@@ -260,7 +260,7 @@ public class MavenProject
 
     /**
      * Sets project {@code file} without changing project {@code basedir}.
-     * 
+     *
      * @since 3.2.4
      */
     public void setPomFile( File file )
@@ -778,7 +778,7 @@ public class MavenProject
         {
             return Collections.emptyList();
         }
-        return getModel().getBuild().getPlugins();
+        return Collections.unmodifiableList( getModel().getBuild().getPlugins() );
     }
 
     public List<String> getModules()
@@ -1079,7 +1079,7 @@ public class MavenProject
         }
         else
         {
-            return build.getExtensions();
+            return Collections.unmodifiableList( build.getExtensions() );
         }
     }
 
@@ -1207,7 +1207,8 @@ public class MavenProject
         // disown the parent
 
         // copy fields
-        setFile( project.getFile() );
+        file = project.file;
+        basedir = project.basedir;
 
         // don't need a deep copy, they don't get modified or added/removed to/from - but make them unmodifiable to be
         // sure!
@@ -1604,7 +1605,7 @@ public class MavenProject
         {
             // TODO let the scope handler deal with this
             if ( Artifact.SCOPE_COMPILE.equals( a.getScope() ) || Artifact.SCOPE_PROVIDED.equals( a.getScope() )
-                || Artifact.SCOPE_SYSTEM.equals( a.getScope() ) )
+                     || Artifact.SCOPE_SYSTEM.equals( a.getScope() ) )
             {
                 Dependency dependency = new Dependency();
 
@@ -1618,7 +1619,7 @@ public class MavenProject
                 list.add( dependency );
             }
         }
-        return list;
+        return Collections.unmodifiableList( list );
     }
 
     @Deprecated
@@ -1662,7 +1663,7 @@ public class MavenProject
 
             list.add( dependency );
         }
-        return list;
+        return Collections.unmodifiableList( list );
     }
 
     @Deprecated // used by the Maven ITs
@@ -1677,7 +1678,7 @@ public class MavenProject
 
         List<Dependency> list = new ArrayList<>( artifacts.size() );
 
-        for ( Artifact a : getArtifacts()  )
+        for ( Artifact a : getArtifacts() )
         {
             // TODO let the scope handler deal with this
             if ( Artifact.SCOPE_COMPILE.equals( a.getScope() ) || Artifact.SCOPE_RUNTIME.equals( a.getScope() ) )
@@ -1694,7 +1695,7 @@ public class MavenProject
                 list.add( dependency );
             }
         }
-        return list;
+        return Collections.unmodifiableList( list );
     }
 
     @Deprecated
@@ -1790,7 +1791,7 @@ public class MavenProject
                 list.add( dependency );
             }
         }
-        return list;
+        return Collections.unmodifiableList( list );
     }
 
     @Deprecated
@@ -1862,8 +1863,7 @@ public class MavenProject
         {
             return Collections.emptyList();
         }
-        return getModel().getReporting().getPlugins();
-
+        return Collections.unmodifiableList( getModel().getReporting().getPlugins() );
     }
 
     @Deprecated

@@ -19,7 +19,6 @@ package org.apache.maven.repository.internal;
  * under the License.
  */
 
-import org.apache.commons.lang3.Validate;
 import org.apache.maven.artifact.repository.metadata.Snapshot;
 import org.apache.maven.artifact.repository.metadata.SnapshotVersion;
 import org.apache.maven.artifact.repository.metadata.Versioning;
@@ -51,9 +50,6 @@ import org.eclipse.aether.resolution.VersionResolutionException;
 import org.eclipse.aether.resolution.VersionResult;
 import org.eclipse.aether.spi.locator.Service;
 import org.eclipse.aether.spi.locator.ServiceLocator;
-import org.eclipse.aether.spi.log.Logger;
-import org.eclipse.aether.spi.log.LoggerFactory;
-import org.eclipse.aether.spi.log.NullLoggerFactory;
 import org.eclipse.aether.util.ConfigUtils;
 
 import javax.inject.Inject;
@@ -69,6 +65,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author Benjamin Bentmann
@@ -87,9 +84,6 @@ public class DefaultVersionResolver
 
     private static final String SNAPSHOT = "SNAPSHOT";
 
-    @SuppressWarnings( "unused" )
-    private Logger logger = NullLoggerFactory.LOGGER;
-
     private MetadataResolver metadataResolver;
 
     private SyncContextFactory syncContextFactory;
@@ -103,49 +97,35 @@ public class DefaultVersionResolver
 
     @Inject
     DefaultVersionResolver( MetadataResolver metadataResolver, SyncContextFactory syncContextFactory,
-                            RepositoryEventDispatcher repositoryEventDispatcher, LoggerFactory loggerFactory )
+                            RepositoryEventDispatcher repositoryEventDispatcher )
     {
         setMetadataResolver( metadataResolver );
         setSyncContextFactory( syncContextFactory );
-        setLoggerFactory( loggerFactory );
         setRepositoryEventDispatcher( repositoryEventDispatcher );
     }
 
     public void initService( ServiceLocator locator )
     {
-        setLoggerFactory( locator.getService( LoggerFactory.class ) );
         setMetadataResolver( locator.getService( MetadataResolver.class ) );
         setSyncContextFactory( locator.getService( SyncContextFactory.class ) );
         setRepositoryEventDispatcher( locator.getService( RepositoryEventDispatcher.class ) );
     }
 
-    public DefaultVersionResolver setLoggerFactory( LoggerFactory loggerFactory )
-    {
-        this.logger = NullLoggerFactory.getSafeLogger( loggerFactory, getClass() );
-        return this;
-    }
-
-    void setLogger( LoggerFactory loggerFactory )
-    {
-        // plexus support
-        setLoggerFactory( loggerFactory );
-    }
-
     public DefaultVersionResolver setMetadataResolver( MetadataResolver metadataResolver )
     {
-        this.metadataResolver = Validate.notNull( metadataResolver, "metadataResolver cannot be null" );
+        this.metadataResolver = Objects.requireNonNull( metadataResolver, "metadataResolver cannot be null" );
         return this;
     }
 
     public DefaultVersionResolver setSyncContextFactory( SyncContextFactory syncContextFactory )
     {
-        this.syncContextFactory = Validate.notNull( syncContextFactory, "syncContextFactory cannot be null" );
+        this.syncContextFactory = Objects.requireNonNull( syncContextFactory, "syncContextFactory cannot be null" );
         return this;
     }
 
     public DefaultVersionResolver setRepositoryEventDispatcher( RepositoryEventDispatcher repositoryEventDispatcher )
     {
-        this.repositoryEventDispatcher = Validate.notNull( repositoryEventDispatcher,
+        this.repositoryEventDispatcher = Objects.requireNonNull( repositoryEventDispatcher,
             "repositoryEventDispatcher cannot be null" );
         return this;
     }

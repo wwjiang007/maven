@@ -21,6 +21,7 @@ package org.apache.maven.repository.internal;
 
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 
@@ -28,7 +29,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.maven.model.DistributionManagement;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Relocation;
@@ -67,9 +67,6 @@ import org.eclipse.aether.resolution.VersionResolutionException;
 import org.eclipse.aether.resolution.VersionResult;
 import org.eclipse.aether.spi.locator.Service;
 import org.eclipse.aether.spi.locator.ServiceLocator;
-import org.eclipse.aether.spi.log.Logger;
-import org.eclipse.aether.spi.log.LoggerFactory;
-import org.eclipse.aether.spi.log.NullLoggerFactory;
 import org.eclipse.aether.transfer.ArtifactNotFoundException;
 
 /**
@@ -80,10 +77,6 @@ import org.eclipse.aether.transfer.ArtifactNotFoundException;
 public class DefaultArtifactDescriptorReader
     implements ArtifactDescriptorReader, Service
 {
-
-    @SuppressWarnings( "unused" )
-    private Logger logger = NullLoggerFactory.LOGGER;
-
     private RemoteRepositoryManager remoteRepositoryManager;
 
     private VersionResolver versionResolver;
@@ -104,15 +97,13 @@ public class DefaultArtifactDescriptorReader
     @Inject
     DefaultArtifactDescriptorReader( RemoteRepositoryManager remoteRepositoryManager, VersionResolver versionResolver,
                                      VersionRangeResolver versionRangeResolver, ArtifactResolver artifactResolver,
-                                     ModelBuilder modelBuilder, RepositoryEventDispatcher repositoryEventDispatcher,
-                                     LoggerFactory loggerFactory )
+                                     ModelBuilder modelBuilder, RepositoryEventDispatcher repositoryEventDispatcher )
     {
         setRemoteRepositoryManager( remoteRepositoryManager );
         setVersionResolver( versionResolver );
         setVersionRangeResolver( versionRangeResolver );
         setArtifactResolver( artifactResolver );
         setModelBuilder( modelBuilder );
-        setLoggerFactory( loggerFactory );
         setRepositoryEventDispatcher( repositoryEventDispatcher );
     }
 
@@ -128,58 +119,46 @@ public class DefaultArtifactDescriptorReader
             setModelBuilder( new DefaultModelBuilderFactory().newInstance() );
         }
         setRepositoryEventDispatcher( locator.getService( RepositoryEventDispatcher.class ) );
-        setLoggerFactory( locator.getService( LoggerFactory.class ) );
-    }
-
-    public DefaultArtifactDescriptorReader setLoggerFactory( LoggerFactory loggerFactory )
-    {
-        this.logger = NullLoggerFactory.getSafeLogger( loggerFactory, getClass() );
-        return this;
-    }
-
-    void setLogger( LoggerFactory loggerFactory )
-    {
-        // plexus support
-        setLoggerFactory( loggerFactory );
     }
 
     public DefaultArtifactDescriptorReader setRemoteRepositoryManager( RemoteRepositoryManager remoteRepositoryManager )
     {
-        this.remoteRepositoryManager = Validate.notNull( remoteRepositoryManager,
+        this.remoteRepositoryManager = Objects.requireNonNull( remoteRepositoryManager,
             "remoteRepositoryManager cannot be null" );
         return this;
     }
 
     public DefaultArtifactDescriptorReader setVersionResolver( VersionResolver versionResolver )
     {
-        this.versionResolver = Validate.notNull( versionResolver, "versionResolver cannot be null" );
+        this.versionResolver = Objects.requireNonNull( versionResolver, "versionResolver cannot be null" );
         return this;
     }
 
     /** @since 3.2.2 */
     public DefaultArtifactDescriptorReader setVersionRangeResolver( VersionRangeResolver versionRangeResolver )
     {
-        this.versionRangeResolver = Validate.notNull( versionRangeResolver, "versionRangeResolver cannot be null" );
+        this.versionRangeResolver =
+            Objects.requireNonNull( versionRangeResolver, "versionRangeResolver cannot be null" );
         return this;
     }
 
     public DefaultArtifactDescriptorReader setArtifactResolver( ArtifactResolver artifactResolver )
     {
-        this.artifactResolver = Validate.notNull( artifactResolver, "artifactResolver cannot be null" );
+        this.artifactResolver = Objects.requireNonNull( artifactResolver, "artifactResolver cannot be null" );
         return this;
     }
 
     public DefaultArtifactDescriptorReader setRepositoryEventDispatcher(
         RepositoryEventDispatcher repositoryEventDispatcher )
     {
-        this.repositoryEventDispatcher = Validate.notNull( repositoryEventDispatcher,
+        this.repositoryEventDispatcher = Objects.requireNonNull( repositoryEventDispatcher,
             "repositoryEventDispatcher cannot be null" );
         return this;
     }
 
     public DefaultArtifactDescriptorReader setModelBuilder( ModelBuilder modelBuilder )
     {
-        this.modelBuilder = Validate.notNull( modelBuilder, "modelBuilder cannot be null" );
+        this.modelBuilder = Objects.requireNonNull( modelBuilder, "modelBuilder cannot be null" );
         return this;
     }
 
